@@ -169,7 +169,7 @@ def download_file_from_yandex_disk(
 
 
 def install_ndi_tools(yandex_disk_url):
-    default_ndi_tools_exe_path = "C:\\Program Files\\NDI.tv\\NDI 4 Tools"
+    default_ndi_tools_exe_path = "C:\\Program Files\\NDI.tv\\NDI 4 Tools\\Webcam Input\\Webcam Input.exe"
     if is_exists_path(default_ndi_tools_exe_path):
         logging.info("NDI Tools already installed.")
         return
@@ -211,17 +211,12 @@ def obs_ndi(url):
 
     logging.info("Staring to extract OBS NDI..")
     os.rename(obs_dni_exe_path, f"{obs_dni_exe_path}.zip")
-    fantasy_zip = zipfile.ZipFile(f"{obs_dni_exe_path}.zip")
-    fantasy_zip.extractall(default_obs_directory_path)
-    fantasy_zip.close()
-
-    # After install setup installing ndi-tools, which already installed
-    # process = subprocess.Popen(
-    #     [obs_dni_exe_path, "/SILENT", "/NORESTART", "/NOCANCEL"],
-    #     stdout=subprocess.PIPE,
-    #     stderr=subprocess.PIPE,
-    # )
-    # stdout, stderr = process.communicate()
+    shutil.unpack_archive(f"{obs_dni_exe_path}.zip", obs_dni_exe_path)
+    
+    shutil.move(f'{obs_dni_exe_path}\\obs-plugins\\64bit\\obs-ndi.dll', 'C:\\Program Files\\OBS\\obs-studio\\obs-plugins\\64bit')
+    shutil.move(f'{obs_dni_exe_path}\\obs-plugins\\64bit\\obs-ndi.pdb', 'C:\\Program Files\\OBS\\obs-studio\\obs-plugins\\64bit')
+    shutil.move(f'{obs_dni_exe_path}\\data\\obs-plugins\\obs-ndi', 'C:\\Program Files\\OBS\\obs-studio\\data\\obs-plugins')
+     
     logging.info(f"Complete extracting OBS NDI.")
 
 
