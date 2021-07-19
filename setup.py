@@ -57,7 +57,7 @@ def download_file(url, progress_bar_description="", path_to_download=None):
         logging.debug(f"Downloaded file will take next disk storage: {total} bytes.")
         block_size = 2048
         with open(path_to_download, "wb") as file, tqdm(
-            desc=progress_bar_description, total=total, unit="B", unit_scale=True
+            desc=progress_bar_description, total=total, unit="B", unit_scale=True, ascii=True
         ) as progress_bar:
             for data in r.iter_content(block_size):
                 progress_bar.update(len(data))
