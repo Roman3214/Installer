@@ -4,7 +4,6 @@ import platform
 import shutil
 import subprocess
 import tempfile
-import zipfile
 
 import requests
 from tqdm import tqdm
@@ -57,12 +56,12 @@ def download_file(url, progress_bar_description="", path_to_download=None):
         total = int(r.headers.get("content-length", 0))
         logging.debug(f"Downloaded file will take next disk storage: {total} bytes.")
         block_size = 2048
-        with open(path_to_download, "wb") as f, tqdm(
+        with open(path_to_download, "wb") as file, tqdm(
             desc=progress_bar_description, total=total, unit="B", unit_scale=True
-        ) as bar:
+        ) as progress_bar:
             for data in r.iter_content(block_size):
-                bar.update(len(data))
-                f.write(data)
+                progress_bar.update(len(data))
+                file.write(data)
     logging.debug(f"Downloading complete. File save to {path_to_download}.")
     return path_to_download
 
@@ -75,7 +74,7 @@ def is_installed_python(version):
             )
         except FileNotFoundError:
             continue
-        stdout, stderr = process.communicate()
+        stdout, _ = process.communicate()
         if version in str(stdout):
             return True
     return False
@@ -103,8 +102,8 @@ def install_python(version):
     else:
         raise Exception(f"Undefiend architecture: {platform.architecture()}")
 
-    logging.info(f"Downloading complete.")
-    logging.info(f"Starting installing..")
+    logging.info("Downloading complete.")
+    logging.info("Starting installing..")
     process = subprocess.Popen(
         [
             python_exe_path,
@@ -131,7 +130,7 @@ def install_dependencies(path_pip):
     )
 
     stdout, stderr = process.communicate()
-    logging.info(f"Complete installing python requirements.")
+    logging.info("Complete installing python requirements.")
 
 
 def install_touchdesigner(version):
@@ -139,23 +138,23 @@ def install_touchdesigner(version):
         "C:\\Program Files\\Derivative\\TouchDesigner\\bin\\TouchDesigner.exe"
     )
     if is_exists_path(default_touchdesiger_exe_path):
-        logging.info(f"TouchDesigner already installed.")
+        logging.info("TouchDesigner already installed.")
         return
 
-    logging.info(f"Staring to downloading TouchDesigner..")
+    logging.info("Staring to downloading TouchDesigner..")
     touchdesiger_exe_path = download_file(
         f"https://download.derivative.ca/TouchDesigner.{version}.exe",
         "Downloading TouchDesigner",
     )
-    logging.info(f"Complete to downloading TouchDesigner.")
-    logging.info(f"Staring to install TouchDesigner..")
+    logging.info("Complete to downloading TouchDesigner.")
+    logging.info("Staring to install TouchDesigner..")
     process = subprocess.Popen(
         [touchdesiger_exe_path, "/VERYSILENT"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
     stdout, stderr = process.communicate()
-    logging.info(f"Complete installing TouchDesigner.")
+    logging.info("Complete installing TouchDesigner.")
 
 
 def download_file_from_yandex_disk(
@@ -169,7 +168,9 @@ def download_file_from_yandex_disk(
 
 
 def install_ndi_tools(yandex_disk_url):
-    default_ndi_tools_exe_path = "C:\\Program Files\\NDI.tv\\NDI 4 Tools\\Webcam Input\\Webcam Input.exe"
+    default_ndi_tools_exe_path = (
+        "C:\\Program Files\\NDI.tv\\NDI 4 Tools\\Webcam Input\\Webcam Input.exe"
+    )
     if is_exists_path(default_ndi_tools_exe_path):
         logging.info("NDI Tools already installed.")
         return
@@ -193,31 +194,42 @@ def install_ndi_tools(yandex_disk_url):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    stdout, stderr = process.communicate()
+    stdout, _ = process.communicate()
     logging.info("Complete installing NDI Tools.")
 
 
 def obs_ndi(url):
 
-    default_obs_directory_path = "C:\\Program Files\\OBS\\"
+    default_obs_directory_path = "C:\\Program Files\\OBS\\obs-studio"
+    path_to_obs_ndi = delimeter.join(
+        [default_obs_directory_path, "obs-plugins", architecture]
+    )
 
-    # if is_exists_path(default_obs_directory_path):
-    #     logging.info(f"OBS NDI plugins already installed.")
-    #     return
+    if is_exists_path(
+        delimeter.join([path_to_obs_ndi, "obs-ndi.dll"])
+    ) and is_exists_path(delimeter.join([path_to_obs_ndi, "obs-ndi.pdb"])):
+        logging.info("OBS NDI plugins already installed.")
+        return
 
     logging.info("Staring to downloading OBS NDI..")
-    obs_dni_exe_path = download_file(url, "Downloading OBS NDI")
+    obs_ndi_exe_path = download_file(url, "Downloading OBS NDI")
     logging.info("Complete to downloading OBS NDI.")
 
     logging.info("Staring to extract OBS NDI..")
-    os.rename(obs_dni_exe_path, f"{obs_dni_exe_path}.zip")
-    shutil.unpack_archive(f"{obs_dni_exe_path}.zip", obs_dni_exe_path)
-    
-    shutil.move(f'{obs_dni_exe_path}\\obs-plugins\\64bit\\obs-ndi.dll', 'C:\\Program Files\\OBS\\obs-studio\\obs-plugins\\64bit')
-    shutil.move(f'{obs_dni_exe_path}\\obs-plugins\\64bit\\obs-ndi.pdb', 'C:\\Program Files\\OBS\\obs-studio\\obs-plugins\\64bit')
-    shutil.move(f'{obs_dni_exe_path}\\data\\obs-plugins\\obs-ndi', 'C:\\Program Files\\OBS\\obs-studio\\data\\obs-plugins')
-     
-    logging.info(f"Complete extracting OBS NDI.")
+    os.rename(obs_ndi_exe_path, f"{obs_ndi_exe_path}.zip")
+    shutil.unpack_archive(f"{obs_ndi_exe_path}.zip", obs_ndi_exe_path)
+
+    shutil.move(
+        f"{obs_ndi_exe_path}\\data\\obs-plugins\\obs-ndi",
+        "{default_obs_directory_path}\\data\\obs-plugins"
+    )
+
+    shutil.move(
+        f"{obs_ndi_exe_path}\\obs-plugins\\{architecture}",
+        f"{default_obs_directory_path}\\obs-plugins",
+    )
+
+    logging.info("Complete extracting OBS NDI.")
 
 
 def download_media_files(yandex_disk_url):
@@ -234,9 +246,7 @@ def download_media_files(yandex_disk_url):
     logging.info("Complete to downloading media files..")
 
     os.rename(media_files, f"{media_files}.zip")
-    fantasy_zip = zipfile.ZipFile(f"{media_files}.zip")
-    fantasy_zip.extractall(default_path)
-    fantasy_zip.close()
+    shutil.unpack_archive(f"{media_files}.zip", default_path)
     logging.info("Complete to extract media files.")
 
 
@@ -273,9 +283,9 @@ if __name__ == "__main__":
     install_python(version="3.9.6")
     install_touchdesigner(version="2021.14360")
     install_ndi_tools("https://disk.yandex.by/d/5qylbuELKWb98A")
-    # obs_ndi(
-    #     "https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows.zip"
-    # )
+    obs_ndi(
+        "https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows.zip"
+    )
     download_media_files("https://disk.yandex.by/d/2Q1R9kcYKl9Q-Q")
     install_dependencies(delimeter.join([default_path, "requirements.txt"]))
     download_project_toe("https://disk.yandex.by/d/fngADNHpJVLcuA")
