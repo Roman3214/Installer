@@ -84,6 +84,56 @@ def is_exists_path(path):
     return os.path.exists(path)
 
 
+def is_obs_studio(version):
+    for obs_studio in ["obs_studio", "obs"]:
+        try:
+            process = subprocess.Popen(
+                [obs_studio, "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+        except FileNotFoundError:
+            continue
+        stdout, _ = process.communicate()
+        if version in str(stdout):
+            return True
+    return False
+
+
+def install_obs_studio(version):
+    if is_obs_studio(version):
+        logging.info(f"obs {version} already installed.")
+        return
+    logging.info(f"Staring to download obs{version}..")
+    if architecture == "64bit":
+        obs_exe_path = download_file(
+            f"https://github.com/obsproject/obs-studio/releases/download/27.0.1/OBS-Studio-27.0.1-Full-Installer-x64.exe",
+            "Downloading obs",
+        )
+    elif architecture == "32bit":
+        obs_exe_path = download_file(
+            f"https://github.com/obsproject/obs-studio/releases/download/27.0.1/OBS-Studio-27.0.1-Full-Installer-x86.exe",
+            "Downloading obs",
+        )
+    else:
+        raise Exception(f"Undefiend architecture: {platform.architecture()}")
+
+    logging.info("Downloading complete.")
+    logging.info("Starting installing..")
+    process = subprocess.Popen(
+        [
+            obs_exe_path,
+            "/S",
+
+
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+    )
+    stdout, stderr = process.communicate()
+    logging.info(f"Installing python{version} complete.")
+    
+    
+
 def install_python(version):
     if is_installed_python(version):
         logging.info(f"Python {version} already installed.")
@@ -279,7 +329,8 @@ if __name__ == "__main__":
 
     delimeter = {"Windows": "\\", "Darwin": "/", "Linux": "/"}.get(platform.system())
     logging.debug(f"Defined path delimeter for OS: {delimeter}.")
-
+    
+    install_obs_studio(version=" 27.0.1")
     install_python(version="3.9.6")
     install_touchdesigner(version="2021.14360")
     install_ndi_tools("https://disk.yandex.by/d/5qylbuELKWb98A")
