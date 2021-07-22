@@ -84,23 +84,12 @@ def is_exists_path(path):
     return os.path.exists(path)
 
 
-def is_obs_studio(version):
-    for obs_studio in ["obs_studio", "obs"]:
-        try:
-            process = subprocess.Popen(
-                [obs_studio, "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
-        except FileNotFoundError:
-            continue
-        stdout, _ = process.communicate()
-        if version in str(stdout):
-            return True
-    return False
-
-
 def install_obs_studio(version):
-    if is_obs_studio(version):
-        logging.info(f"obs {version} already installed.")
+    default_obs_exe_path = (
+        "C:\\Program Files\\obs-studio\\bin\\64bit\\obs64.exe"
+    )
+    if is_exists_path(default_obs_exe_path):
+        logging.info("OBS already installed.")
         return
     logging.info(f"Staring to download obs{version}..")
     if architecture == "64bit":
@@ -130,6 +119,7 @@ def install_obs_studio(version):
         shell=True,
     )
     stdout, stderr = process.communicate()
+    logging.info(f"Installing python{version} complete.")
     logging.info(f"Installing python{version} complete.")
     
     
