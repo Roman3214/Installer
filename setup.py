@@ -1,3 +1,4 @@
+  
 import logging
 import os
 import platform
@@ -7,6 +8,7 @@ import tempfile
 
 import requests
 from tqdm import tqdm
+import winapps
 
 
 def hello_page():
@@ -85,12 +87,11 @@ def is_exists_path(path):
 
 
 def install_obs_studio(version):
-    default_obs_exe_path = (
-        "C:\\Program Files\\obs-studio\\bin\\64bit\\obs64.exe"
-    )
-    if is_exists_path(default_obs_exe_path):
-        logging.info("OBS already installed.")
-        return
+    for default_obs_exe_path in winapps.search_installed('OBS studio'):
+    #default_obs_exe_path = ("C:\\Program Files\\obs-studio\\bin\\64bit\\obs64.exe" )
+        if default_obs_exe_path:
+            logging.info("OBS studio already installed.")
+            return
     logging.info(f"Staring to download obs{version}..")
     if architecture == "64bit":
         obs_exe_path = download_file(
@@ -174,12 +175,11 @@ def install_dependencies(path_pip):
 
 
 def install_touchdesigner(version):
-    default_touchdesiger_exe_path = (
-        "C:\\Program Files\\Derivative\\TouchDesigner\\bin\\TouchDesigner.exe"
-    )
-    if is_exists_path(default_touchdesiger_exe_path):
-        logging.info("TouchDesigner already installed.")
-        return
+    for default_touchdesiger_exe_path in winapps.search_installed('NDI 4 Tools'):
+    #default_touchdesiger_exe_path = (        "C:\\Program Files\\Derivative\\TouchDesigner\\bin\\TouchDesigner.exe"    )
+        if default_touchdesiger_exe_path:
+            logging.info("TouchDesigner already installed.")
+            return
 
     logging.info("Staring to downloading TouchDesigner..")
     touchdesiger_exe_path = download_file(
@@ -208,12 +208,12 @@ def download_file_from_yandex_disk(
 
 
 def install_ndi_tools(yandex_disk_url):
-    default_ndi_tools_exe_path = (
-        "C:\\Program Files\\NDI.tv\\NDI 4 Tools\\Webcam Input\\Webcam Input.exe"
-    )
-    if is_exists_path(default_ndi_tools_exe_path):
-        logging.info("NDI Tools already installed.")
-        return
+    for default_ndi_tools_exe_path in winapps.search_installed('NDI 4 Tools'):
+    #("C:\\Program Files\\NDI.tv\\NDI 4 Tools\\Webcam Input\\Webcam Input.exe" )
+    
+        if default_ndi_tools_exe_path:
+            logging.info("NDI Tools already installed.")
+            return
 
     logging.info("Staring to downloading NDI Tools..")
     ndi_tools_exe_path = download_file_from_yandex_disk(
@@ -239,11 +239,14 @@ def install_ndi_tools(yandex_disk_url):
 
 
 def obs_ndi(url):
-
-    default_obs_directory_path = "C:\\Program Files\\OBS\\obs-studio"
-    path_to_obs_ndi = delimeter.join(
-        [default_obs_directory_path, "obs-plugins", architecture]
+    for app in winapps.search_installed('OBS studio'):
+        default_obs_directory_path = app.uninstall_string.strip('\\uninstall.exe')
+        shielding = default_obs_directory_path.replace('\\', '\\\\')
+    #default_obs_directory_path = "C:\\Program Files\\OBS\\obs-studio"
+        path_to_obs_ndi = delimeter.join(
+        [f'{shielding}\\', "obs-plugins", f'\\{architecture}\\\\']
     )
+    #print(path_to_obs_ndi)
 
     if is_exists_path(
         delimeter.join([path_to_obs_ndi, "obs-ndi.dll"])
@@ -261,7 +264,7 @@ def obs_ndi(url):
 
     shutil.move(
         f"{obs_ndi_exe_path}\\data\\obs-plugins\\obs-ndi",
-        "{default_obs_directory_path}\\data\\obs-plugins"
+        f"{default_obs_directory_path}\\data\\obs-plugins"
     )
 
     shutil.move(
@@ -273,12 +276,6 @@ def obs_ndi(url):
 
 
 def download_media_files(yandex_disk_url):
-    # default_media_files_path = "C:\\Program Files\\"
-
-    # if is_exists_path(default_media_files_path):
-    #     logging.info("Media files already extracted.")
-    #     return
-
     logging.info("Starting to downloading media files..")
     media_files = download_file_from_yandex_disk(
         yandex_disk_url, "Downloading media files"
@@ -324,9 +321,7 @@ if __name__ == "__main__":
     install_python(version="3.9.6")
     install_touchdesigner(version="2021.14360")
     install_ndi_tools("https://disk.yandex.by/d/5qylbuELKWb98A")
-    obs_ndi(
-        "https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows.zip"
-    )
+    obs_ndi(        "https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows.zip"    )
     download_media_files("https://disk.yandex.by/d/2Q1R9kcYKl9Q-Q")
     install_dependencies(delimeter.join([default_path, "requirements.txt"]))
     download_project_toe("https://disk.yandex.by/d/fngADNHpJVLcuA")
