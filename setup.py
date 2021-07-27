@@ -1,4 +1,3 @@
-  
 import logging
 import os
 import platform
@@ -7,25 +6,14 @@ import subprocess
 import tempfile
 
 import requests
-from tqdm import tqdm
 import winapps
+from tqdm import tqdm
 
+from ascii_logo import hello_page
 
-def hello_page():
-    print(
-        """
-                                                  _________________
-                                   ._ o o        | X-CON INSTALLER |
-                                   \_`-)|_       |_________________|
-                                ,""       \       /
-                              ,"  ## |   0 0.    /
-                            ," ##   ,-\__    `. /
-                          ,"       /     `--._;)
-                        ,"     ## /
-                      ,"   ##    /
-                """
-    )
-
+# TODO:
+# * Delete installed files in the end (cleanup stage)
+# * On starting download file checks maybe already download
 
 def prepare_parrent_dir(path):
     parrent_directory = os.path.abspath(os.path.join(path, os.pardir))
@@ -44,14 +32,18 @@ def create_temporary_directory(filename):
 def prepare_place_for_download(path_to_download, url):
     if path_to_download is None:
         filename = url.split("/")[-1]
+        if len(filename) > 15 and "%" in filename:
+            import hashlib
+            filename = hashlib.md5(filename.encode()).hexdigest()
         path_to_download = create_temporary_directory(filename)
     elif isinstance(path_to_download, str):
         prepare_parrent_dir(path_to_download)
     return path_to_download
 
 
-def download_file(url, progress_bar_description="", path_to_download=None):
+def download_file(url, progress_bar_description="", path_to_download=None, _application_log_name=""):
     logging.debug(f"Got url with description: {url} / {progress_bar_description}.")
+    logging.info(f"Starting download {_application_log_name}..")
     path_to_download = prepare_place_for_download(path_to_download, url)
     logging.debug(f"Downloaded file will store here: {path_to_download}.")
     with requests.get(url, stream=True) as r:
@@ -59,12 +51,17 @@ def download_file(url, progress_bar_description="", path_to_download=None):
         logging.debug(f"Downloaded file will take next disk storage: {total} bytes.")
         block_size = 2048
         with open(path_to_download, "wb") as file, tqdm(
-            desc=progress_bar_description, total=total, unit="B", unit_scale=True, ascii=True
+            desc=progress_bar_description,
+            total=total,
+            unit="B",
+            unit_scale=True,
+            ascii=True,
         ) as progress_bar:
             for data in r.iter_content(block_size):
                 progress_bar.update(len(data))
                 file.write(data)
     logging.debug(f"Downloading complete. File save to {path_to_download}.")
+    logging.info(f"Downloading complete {_application_log_name}.")
     return path_to_download
 
 
@@ -86,242 +83,195 @@ def is_exists_path(path):
     return os.path.exists(path)
 
 
+def is_installed_application(name):
+    try:
+        if next(winapps.search_installed(name)):
+            return True
+    except StopIteration:
+        return False
+    return False
+
+
+def execute_command(command, is_need_split=True, _application_log_name=""):
+    logging.debug(f"Got command for execute: {command}")
+    logging.info(f"Starting installation {_application_log_name}..")
+    if is_need_split:
+        command = command.split(" ")
+    logging.debug(f"Got command for execute: {command}")
+    subprocess.Popen(
+        command,
+        shell=True
+    ).wait()
+    logging.info(f"Installing {_application_log_name} complete.")
+
+
 def install_obs_studio(version):
-    for default_obs_exe_path in winapps.search_installed('OBS studio'):
-    #default_obs_exe_path = ("C:\\Program Files\\obs-studio\\bin\\64bit\\obs64.exe" )
-        if default_obs_exe_path:
-            logging.info("OBS studio already installed.")
-            return
-    logging.info(f"Staring to download obs{version}..")
+    _application_log_name = f"OBS Studio {version}"
+
+    if is_installed_application("OBS Studio"):
+        logging.info(f"{_application_log_name} already installed.")
+        return
+
     if architecture == "64bit":
         obs_exe_path = download_file(
-            f"https://github.com/obsproject/obs-studio/releases/download/27.0.1/OBS-Studio-27.0.1-Full-Installer-x64.exe",
+            f"https://github.com/obsproject/obs-studio/releases/download/{version}/OBS-Studio-{version}-Full-Installer-x64.exe",
             "Downloading obs",
+            _application_log_name=_application_log_name,
         )
     elif architecture == "32bit":
         obs_exe_path = download_file(
-            f"https://github.com/obsproject/obs-studio/releases/download/27.0.1/OBS-Studio-27.0.1-Full-Installer-x86.exe",
+            f"https://github.com/obsproject/obs-studio/releases/download/{version}/OBS-Studio-{version}-Full-Installer-x86.exe",
             "Downloading obs",
+            _application_log_name=_application_log_name,
         )
     else:
         raise Exception(f"Undefiend architecture: {platform.architecture()}")
 
-    logging.info("Downloading complete.")
-    logging.info("Starting installing..")
-    process = subprocess.Popen(
-        [
-            obs_exe_path,
-            "/S",
+    execute_command(f"{obs_exe_path} /S", _application_log_name)
 
 
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=True,
-    )
-    stdout, stderr = process.communicate()
-    logging.info(f"Installing python{version} complete.")
-    logging.info(f"Installing python{version} complete.")
-    
-    
 
 def install_python(version):
+    _application_log_name = f"Python {version}"
     if is_installed_python(version):
-        logging.info(f"Python {version} already installed.")
+        logging.info(f"{_application_log_name} already installed.")
         return
-    logging.info(f"Staring to download python{version}..")
     if architecture == "64bit":
         python_exe_path = download_file(
             f"https://www.python.org/ftp/python/{version}/python-{version}-amd64.exe",
             "Downloading python3",
+            _application_log_name=_application_log_name,
         )
     elif architecture == "32bit":
         python_exe_path = download_file(
             f"https://www.python.org/ftp/python/{version}/python-{version}.exe",
             "Downloading python3",
+            _application_log_name=_application_log_name,
         )
     else:
         raise Exception(f"Undefiend architecture: {platform.architecture()}")
 
-    logging.info("Downloading complete.")
-    logging.info("Starting installing..")
-    process = subprocess.Popen(
-        [
-            python_exe_path,
-            "/quiet",
-            "PrependPath=1",
-            "Include_test=0",
-            "CompileAll=1",
-            "Include_tcltk=0",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout, stderr = process.communicate()
-    logging.info(f"Installing python{version} complete.")
+    execute_command(f"{python_exe_path} /quiet PrependPath=1 Include_test=0 CompileAll=1 Include_tcltk=0", _application_log_name)
 
 
 def install_dependencies(path_pip):
-    logging.info(f"Staring to install python requirements from path: {path_pip} ..")
-
-    process = subprocess.Popen(
-        ["python", "-m", "pip", "install", "-r", path_pip],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-
-    stdout, stderr = process.communicate()
-    logging.info("Complete installing python requirements.")
+    logging.info(f"Starting installation python requirements from path: {path_pip} ..")
+    execute_command(["python", "-m", "pip", "install", "-r", f"{path_pip}"], is_need_split=False)
+    logging.info("Completed installation python requirements.")
 
 
 def install_touchdesigner(version):
-    for default_touchdesiger_exe_path in winapps.search_installed('NDI 4 Tools'):
-    #default_touchdesiger_exe_path = (        "C:\\Program Files\\Derivative\\TouchDesigner\\bin\\TouchDesigner.exe"    )
+    _application_log_name = f"TouchDesigner {version}"
+    for default_touchdesiger_exe_path in winapps.search_installed("TouchDesigner"):
         if default_touchdesiger_exe_path:
-            logging.info("TouchDesigner already installed.")
+            logging.info(f"{_application_log_name} already installed.")
             return
 
-    logging.info("Staring to downloading TouchDesigner..")
     touchdesiger_exe_path = download_file(
         f"https://download.derivative.ca/TouchDesigner.{version}.exe",
         "Downloading TouchDesigner",
+        _application_log_name=_application_log_name
     )
-    logging.info("Complete to downloading TouchDesigner.")
-    logging.info("Staring to install TouchDesigner..")
-    process = subprocess.Popen(
-        [touchdesiger_exe_path, "/VERYSILENT"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout, stderr = process.communicate()
-    logging.info("Complete installing TouchDesigner.")
+
+    execute_command(f"{touchdesiger_exe_path} /VERYSILENT", _application_log_name)
 
 
 def download_file_from_yandex_disk(
-    url, progress_bar_description="", path_to_download=None
+    url, progress_bar_description="", path_to_download=None, _application_log_name=""
 ):
     base_url = "https://cloud-api.yandex.net/v1/disk/public/resources/download"
 
     response = requests.get(base_url, params={"public_key": url})
     download_url = response.json().get("href")
-    return download_file(download_url, progress_bar_description, path_to_download)
+    return download_file(download_url, progress_bar_description, path_to_download, _application_log_name)
 
 
 def install_ndi_tools(yandex_disk_url):
-    for default_ndi_tools_exe_path in winapps.search_installed('NDI 4 Tools'):
-    #("C:\\Program Files\\NDI.tv\\NDI 4 Tools\\Webcam Input\\Webcam Input.exe" )
-    
-        if default_ndi_tools_exe_path:
-            logging.info("NDI Tools already installed.")
-            return
-
-    logging.info("Staring to downloading NDI Tools..")
-    ndi_tools_exe_path = download_file_from_yandex_disk(
-        yandex_disk_url, "Installing NDI Tools"
-    )
-    logging.info("Complete to downloading NDI Tools")
-
-    os.rename(ndi_tools_exe_path, f"{ndi_tools_exe_path}.exe")
-    logging.info("Staring to install NDI Tools..")
-    process = subprocess.Popen(
-        [
-            f"{ndi_tools_exe_path}.exe",
-            "/VERYSILENT",
-            "/NORESTART",
-            "/TYPE=all_tools",
-            "/SP-",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout, _ = process.communicate()
-    logging.info("Complete installing NDI Tools.")
-
-
-def obs_ndi(url):
-    for app in winapps.search_installed('OBS studio'):
-        default_obs_directory_path = app.uninstall_string.strip('\\uninstall.exe')
-        shielding = default_obs_directory_path.replace('\\', '\\\\')
-    #default_obs_directory_path = "C:\\Program Files\\OBS\\obs-studio"
-        path_to_obs_ndi = delimeter.join(
-        [f'{shielding}\\', "obs-plugins", f'\\{architecture}\\\\']
-    )
-    #print(path_to_obs_ndi)
-
-    if is_exists_path(
-        delimeter.join([path_to_obs_ndi, "obs-ndi.dll"])
-    ) and is_exists_path(delimeter.join([path_to_obs_ndi, "obs-ndi.pdb"])):
-        logging.info("OBS NDI plugins already installed.")
+    _application_log_name = "NDI Tools"
+    if is_installed_application("NDI 4 Tools"):
+        logging.info(f"{_application_log_name} already installed.")
         return
 
-    logging.info("Staring to downloading OBS NDI..")
-    obs_ndi_exe_path = download_file(url, "Downloading OBS NDI")
-    logging.info("Complete to downloading OBS NDI.")
-
-    logging.info("Staring to extract OBS NDI..")
-    os.rename(obs_ndi_exe_path, f"{obs_ndi_exe_path}.zip")
-    shutil.unpack_archive(f"{obs_ndi_exe_path}.zip", obs_ndi_exe_path)
-
-    shutil.move(
-        f"{obs_ndi_exe_path}\\data\\obs-plugins\\obs-ndi",
-        f"{default_obs_directory_path}\\data\\obs-plugins"
+    ndi_tools_exe_path = download_file_from_yandex_disk(
+        yandex_disk_url, "Downloading NDI Tools", _application_log_name=_application_log_name
     )
+    os.rename(ndi_tools_exe_path, f"{ndi_tools_exe_path}.exe")
 
-    shutil.move(
-        f"{obs_ndi_exe_path}\\obs-plugins\\{architecture}",
-        f"{default_obs_directory_path}\\obs-plugins",
-    )
+    execute_command(f"{ndi_tools_exe_path} /VERYSILENT /NORESTART /TYPE=all_tools /SP-", _application_log_name)
 
-    logging.info("Complete extracting OBS NDI.")
+
+def install_obs_ndi(url):
+    _application_log_name = "OBS NDI"
+    if not is_installed_application("OBS Studio"):
+        logging.warning("OBS Studio not installed.")
+        logging.warning("OBS NDI not installed.")
+        return
+
+    if is_installed_application("obs-ndi"):
+        logging.info(f"{_application_log_name} already installed.")
+        return
+
+    obs_ndi_exe_path = download_file(url, "Downloading OBS NDI", _application_log_name=_application_log_name)
+
+    execute_command(f"{obs_ndi_exe_path} /VERYSILENT /COMPONENTS=''", _application_log_name)
 
 
 def download_media_files(yandex_disk_url):
-    logging.info("Starting to downloading media files..")
+    _application_log_name = "media files"
+    if is_exists_path(delimeter.join([default_path, "AUTO_CONF_LOCATIONS"])):
+        logging.info(f"{_application_log_name} already exists.")
+        return
+
     media_files = download_file_from_yandex_disk(
-        yandex_disk_url, "Downloading media files"
+        yandex_disk_url, "Downloading media files", _application_log_name=_application_log_name
     )
-    logging.info("Complete to downloading media files..")
 
     os.rename(media_files, f"{media_files}.zip")
     shutil.unpack_archive(f"{media_files}.zip", default_path)
-    logging.info("Complete to extract media files.")
+    logging.info("Completed extract media files.")
 
 
 def download_project_toe(yandex_disk_url):
+    _application_log_name = "TouchDesigner project"
     path_to_download = delimeter.join([default_path, "Awesome-Project.toe"])
 
     if is_exists_path(path_to_download):
-        logging.info("Project files already exists.")
+        logging.info(f"{_application_log_name} already exists.")
         return
 
-    logging.info("Starting to download TouchDesigner project.")
     download_file_from_yandex_disk(
-        yandex_disk_url, "Downloading TouchDesigner projects", path_to_download
+        yandex_disk_url, "Downloading TouchDesigner projects", path_to_download, _application_log_name=_application_log_name
     )
-    logging.info("Complete to download TouchDesigner project.")
 
 
 if __name__ == "__main__":
     LOGLEVEL = os.environ.get("LOGLEVEL", "INFO").upper().strip()
-    logging.basicConfig(level=LOGLEVEL)
+    logging.basicConfig(
+        level=LOGLEVEL,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%d/%m %I:%M:%S",
+    )
 
     hello_page()
-    logging.debug("Starting to install tools..")
+
+    logging.debug("Starting installation tools..")
 
     architecture = platform.architecture()[0]
     logging.debug(f"Defined next architecture: {architecture}.")
 
-    default_path = "C:\\Program Files (x86)\\X-CON"
-    logging.debug(f"Defined default to extract path: {default_path}.")
+    default_path = "C:\\Program Files (x86)\\CON-X"
+    logging.debug(f"Defined default extract path: {default_path}.")
 
     delimeter = {"Windows": "\\", "Darwin": "/", "Linux": "/"}.get(platform.system())
     logging.debug(f"Defined path delimeter for OS: {delimeter}.")
-    
-    install_obs_studio(version=" 27.0.1")
+
+    install_obs_studio(version="27.0.1")
     install_python(version="3.9.6")
     install_touchdesigner(version="2021.14360")
     install_ndi_tools("https://disk.yandex.by/d/5qylbuELKWb98A")
-    obs_ndi(        "https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows.zip"    )
+    install_obs_ndi(
+       "https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows-Installer.exe"
+    )
     download_media_files("https://disk.yandex.by/d/2Q1R9kcYKl9Q-Q")
     install_dependencies(delimeter.join([default_path, "requirements.txt"]))
     download_project_toe("https://disk.yandex.by/d/fngADNHpJVLcuA")
