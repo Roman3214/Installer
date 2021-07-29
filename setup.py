@@ -220,7 +220,7 @@ def install_obs_ndi(url):
         else:
             obs_ndi_exe_path = download_file(url, path_to_download=zero_path_obs_ndi, _application_log_name=_application_log_name)
             execute_command(f"{zero_path_obs_ndi} /VERYSILENT /COMPONENTS=''", _application_log_name)
-            shutil.rmtree(zero_path_obs_ndi)
+            shutil.rmtree(os.getenv('USERPROFILE') + '\\AppData\\Local\\Temp\\OBS_NDI')
 
 
 def download_media_files(yandex_disk_url):
