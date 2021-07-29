@@ -211,9 +211,16 @@ def install_obs_ndi(url):
         logging.info(f"{_application_log_name} already installed.")
         return
 
-    obs_ndi_exe_path = download_file(url, "Downloading OBS NDI", _application_log_name=_application_log_name)
+    with requests.get(url, stream=True) as r:
+        total = int(r.headers.get("content-length", 0))
+        if os.path.exists(zero_path_obs_ndi):
 
-    execute_command(f"{obs_ndi_exe_path} /VERYSILENT /COMPONENTS=''", _application_log_name)
+            if total == os.path.getsize(zero_path_obs_ndi):
+                execute_command(f"{zero_path_obs_ndi} /VERYSILENT /COMPONENTS=''", _application_log_name)
+        else:
+            obs_ndi_exe_path = download_file(url, path_to_download=zero_path_obs_ndi, _application_log_name=_application_log_name)
+            execute_command(f"{zero_path_obs_ndi} /VERYSILENT /COMPONENTS=''", _application_log_name)
+            shutil.rmtree(zero_path_obs_ndi)
 
 
 def download_media_files(yandex_disk_url):
