@@ -17,20 +17,21 @@ from ascii_logo import hello_page
 
 def prepare_parrent_dir(path):
     parrent_directory = os.path.abspath(os.path.join(path, os.pardir))
+    
     if not os.path.exists(parrent_directory):
         logging.debug(f"Created directory for file {parrent_directory}.")
         os.mkdir(parrent_directory)
 
 
 def create_temporary_directory(filename):
-    dirpath = tempfile.mkdtemp("zxcqwer")
+    dirpath = tempfile.mkdtemp()   
     path = delimeter.join([dirpath, filename])
     logging.debug(f"Created temporary directory and file: {path}.")
     return path
 
 
 def prepare_place_for_download(path_to_download, url):
-    if path_to_download is None:
+    if path_to_download is  None:
         filename = url.split("/")[-1]
         if len(filename) > 15 and "%" in filename:
             import hashlib
@@ -45,6 +46,7 @@ def download_file(url, progress_bar_description="", path_to_download=None, _appl
     logging.debug(f"Got url with description: {url} / {progress_bar_description}.")
     logging.info(f"Starting download {_application_log_name}..")
     path_to_download = prepare_place_for_download(path_to_download, url)
+    
     logging.debug(f"Downloaded file will store here: {path_to_download}.")
     with requests.get(url, stream=True) as r:
         total = int(r.headers.get("content-length", 0))
@@ -112,46 +114,101 @@ def install_obs_studio(version):
         logging.info(f"{_application_log_name} already installed.")
         return
 
+    temp = os.environ.get("TEMP")
+    zero_path_OBS = f'{temp}\\OBS\\OBS_Studio.exe'
+
     if architecture == "64bit":
-        obs_exe_path = download_file(
+        with requests.get(url, stream=True) as r:
+            total = int(r.headers.get("content-length", 0))
+            if os.path.exists(zero_path_OBS):
+
+                if total == os.path.getsize(zero_path_OBS):
+                    execute_command(f"{obs_exe_path} /S", _application_log_name)
+                    shutil.rmtree(f'{temp}\\Python')
+            else:
+                obs_exe_path = download_file(
             f"https://github.com/obsproject/obs-studio/releases/download/{version}/OBS-Studio-{version}-Full-Installer-x64.exe",
             "Downloading obs",
             _application_log_name=_application_log_name,
-        )
+                )
+                execute_command(f"{obs_exe_path} /S", _application_log_name)
+                shutil.rmtree(f'{temp}\\OBS')
+        
     elif architecture == "32bit":
-        obs_exe_path = download_file(
+        with requests.get(url, stream=True) as r:
+            total = int(r.headers.get("content-length", 0))
+            if os.path.exists(zero_path_OBS):
+
+                if total == os.path.getsize(zero_path_OBS):
+                    execute_command(f"{obs_exe_path} /S", _application_log_name)
+                    shutil.rmtree(f'{temp}\\Python')
+            else:
+                obs_exe_path = download_file(
             f"https://github.com/obsproject/obs-studio/releases/download/{version}/OBS-Studio-{version}-Full-Installer-x86.exe",
             "Downloading obs",
             _application_log_name=_application_log_name,
-        )
+                )
+                execute_command(f"{obs_exe_path} /S", _application_log_name)
+                shutil.rmtree(f'{temp}\\OBS')
+       
     else:
         raise Exception(f"Undefiend architecture: {platform.architecture()}")
 
-    execute_command(f"{obs_exe_path} /S", _application_log_name)
-
-
-
+    
 def install_python(version):
     _application_log_name = f"Python {version}"
     if is_installed_python(version):
         logging.info(f"{_application_log_name} already installed.")
         return
+
+    temp = os.environ.get("TEMP")
+    zero_path_python = f'{temp}\\Python\\Python.exe'
+
     if architecture == "64bit":
+        with requests.get(url, stream=True) as r:
+            total = int(r.headers.get("content-length", 0))
+            if os.path.exists(zero_path_python):
+
+                if total == os.path.getsize(zero_path_python):
+                    execute_command(f"{python_exe_path} /quiet PrependPath=1 Include_test=0 CompileAll=1 Include_tcltk=0", _application_log_name)
+                    shutil.rmtree(f'{temp}\\Python')
+            else:
+                python_exe_path = download_file(
+            f"https://www.python.org/ftp/python/{version}/python-{version}-amd64.exe",
+            "Downloading python3",
+            _application_log_name=_application_log_name,
+            )
+                execute_command(f"{python_exe_path} /quiet PrependPath=1 Include_test=0 CompileAll=1 Include_tcltk=0", _application_log_name)
+                shutil.rmtree(f'{temp}\\Python')
+        
+        
+        
         python_exe_path = download_file(
             f"https://www.python.org/ftp/python/{version}/python-{version}-amd64.exe",
             "Downloading python3",
             _application_log_name=_application_log_name,
-        )
+            )
     elif architecture == "32bit":
-        python_exe_path = download_file(
+        with requests.get(url, stream=True) as r:
+            total = int(r.headers.get("content-length", 0))
+            if os.path.exists(zero_path_python):
+
+                if total == os.path.getsize(zero_path_python):
+                    execute_command(f"{python_exe_path} /quiet PrependPath=1 Include_test=0 CompileAll=1 Include_tcltk=0", _application_log_name)
+                    shutil.rmtree(f'{temp}\\Python')
+            else:
+                python_exe_path = download_file(
             f"https://www.python.org/ftp/python/{version}/python-{version}.exe",
             "Downloading python3",
             _application_log_name=_application_log_name,
-        )
+                )
+                execute_command(f"{python_exe_path} /quiet PrependPath=1 Include_test=0 CompileAll=1 Include_tcltk=0", _application_log_name)
+                shutil.rmtree(f'{temp}\\Python')
+        
     else:
         raise Exception(f"Undefiend architecture: {platform.architecture()}")
 
-    execute_command(f"{python_exe_path} /quiet PrependPath=1 Include_test=0 CompileAll=1 Include_tcltk=0", _application_log_name)
+    
 
 
 def install_dependencies(path_pip):
@@ -166,15 +223,25 @@ def install_touchdesigner(version):
         if default_touchdesiger_exe_path:
             logging.info(f"{_application_log_name} already installed.")
             return
+    
+    temp = os.environ.get("TEMP")
+    zero_path_touchdesigner = f'{temp}\\TouchDesigner\\TouchDesigner.exe'
+    
+    with requests.get(url, stream=True) as r:
+        total = int(r.headers.get("content-length", 0))
+        if os.path.exists(zero_path_touchdesigner):
 
-    touchdesiger_exe_path = download_file(
+            if total == os.path.getsize(zero_path_touchdesigner):
+                execute_command(f"{touchdesiger_exe_path} /VERYSILENT", _application_log_name)
+                shutil.rmtree(f'{temp}\\TouchDesigner')
+        else:
+            touchdesiger_exe_path = download_file(
         f"https://download.derivative.ca/TouchDesigner.{version}.exe",
-        "Downloading TouchDesigner",
+        path_to_download=zero_path_touchdesigner,
         _application_log_name=_application_log_name
-    )
-
-    execute_command(f"{touchdesiger_exe_path} /VERYSILENT", _application_log_name)
-
+        )
+            execute_command(f"{touchdesiger_exe_path} /VERYSILENT", _application_log_name)
+            shutil.rmtree(f'{temp}\\TouchDesigner')
 
 def download_file_from_yandex_disk(
     url, progress_bar_description="", path_to_download=None, _application_log_name=""
@@ -191,14 +258,22 @@ def install_ndi_tools(yandex_disk_url):
     if is_installed_application("NDI 4 Tools"):
         logging.info(f"{_application_log_name} already installed.")
         return
+    
+    temp = os.environ.get("TEMP")
+    ndi_tools_exe_path = f'{temp}\\NDI_Tools\\NDI_Tools.exe'
+    
+    with requests.get(url, stream=True) as r:
+        total = int(r.headers.get("content-length", 0))
+        if os.path.exists(ndi_tools_exe_path):
 
-    ndi_tools_exe_path = download_file_from_yandex_disk(
-        yandex_disk_url, "Downloading NDI Tools", _application_log_name=_application_log_name
-    )
-    os.rename(ndi_tools_exe_path, f"{ndi_tools_exe_path}.exe")
-
-    execute_command(f"{ndi_tools_exe_path} /VERYSILENT /NORESTART /TYPE=all_tools /SP-", _application_log_name)
-
+            if total == os.path.getsize(ndi_tools_exe_path):
+                execute_command(f"{ndi_tools_exe_path} /VERYSILENT /NORESTART /TYPE=all_tools /SP-", _application_log_name)
+                shutil.rmtree(f'{temp}\\NDI_Tools')
+        else:
+            ndi_tools_exe_path = download_file_from_yandex_disk(yandex_disk_url, "Downloading NDI Tools", _application_log_name=_application_log_name)
+            obs_ndi_exe_path = download_file(url, path_to_download=ndi_tools_exe_path, _application_log_name=_application_log_name)
+            execute_command(f"{ndi_tools_exe_path} /VERYSILENT /NORESTART /TYPE=all_tools /SP-", _application_log_name)
+            shutil.rmtree(f'{temp}\\NDI_Tools')
 
 def install_obs_ndi(url):
     _application_log_name = "OBS NDI"
@@ -210,8 +285,8 @@ def install_obs_ndi(url):
     if is_installed_application("obs-ndi"):
         logging.info(f"{_application_log_name} already installed.")
         return
-
-    zero_path_obs_ndi = os.getenv('USERPROFILE') + '\\AppData\\Local\\Temp\\OBS_NDI\\OBS_NDI.exe'
+    temp = os.environ.get("TEMP")
+    zero_path_obs_ndi = f'{temp}\\OBS_NDI\\OBS_NDI.exe'
     
     with requests.get(url, stream=True) as r:
         total = int(r.headers.get("content-length", 0))
@@ -219,11 +294,12 @@ def install_obs_ndi(url):
 
             if total == os.path.getsize(zero_path_obs_ndi):
                 execute_command(f"{zero_path_obs_ndi} /VERYSILENT /COMPONENTS=''", _application_log_name)
-                shutil.rmtree(os.getenv('USERPROFILE') + '\\AppData\\Local\\Temp\\OBS_NDI')
+                shutil.rmtree(f'{temp}\\OBS_NDI')
         else:
             obs_ndi_exe_path = download_file(url, path_to_download=zero_path_obs_ndi, _application_log_name=_application_log_name)
             execute_command(f"{zero_path_obs_ndi} /VERYSILENT /COMPONENTS=''", _application_log_name)
-            shutil.rmtree(os.getenv('USERPROFILE') + '\\AppData\\Local\\Temp\\OBS_NDI')
+            shutil.rmtree(f'{temp}\\OBS_NDI')
+    
 
 
 def download_media_files(yandex_disk_url):
@@ -251,19 +327,7 @@ def download_project_toe(yandex_disk_url):
 
     download_file_from_yandex_disk(
         yandex_disk_url, "Downloading TouchDesigner projects", path_to_download, _application_log_name=_application_log_name
- 
-
     )
-    
-    
-def delet_temp():
-    homepath = os.getenv('USERPROFILE')
-    file_name = os.path.normpath(homepath + '/AppData/Local/Temp')
-    os.chdir(file_name)
-
-    for filename in os.listdir():
-        if filename.endswith("zxcqwer"):
-            shutil.rmtree(filename)
 
 
 if __name__ == "__main__":
@@ -273,7 +337,6 @@ if __name__ == "__main__":
         format="%(asctime)s - %(levelname)s - %(message)s",
         datefmt="%d/%m %I:%M:%S",
     )
-    
 
     hello_page()
 
@@ -292,10 +355,7 @@ if __name__ == "__main__":
     install_python(version="3.9.6")
     install_touchdesigner(version="2021.14360")
     install_ndi_tools("https://disk.yandex.by/d/5qylbuELKWb98A")
-    install_obs_ndi(
-       "https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows-Installer.exe"
-    )
+    install_obs_ndi("https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows-Installer.exe")
     download_media_files("https://disk.yandex.by/d/2Q1R9kcYKl9Q-Q")
     install_dependencies(delimeter.join([default_path, "requirements.txt"]))
     download_project_toe("https://disk.yandex.by/d/fngADNHpJVLcuA")
-    delet_temp()
