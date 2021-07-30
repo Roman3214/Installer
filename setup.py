@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import os
 import platform
@@ -11,9 +12,6 @@ from tqdm import tqdm
 
 from ascii_logo import hello_page
 
-# TODO:
-# * Delete installed files in the end (cleanup stage)
-# * On starting download file checks maybe already download
 
 def prepare_parrent_dir(path):
     parrent_directory = os.path.abspath(os.path.join(path, os.pardir))
@@ -23,28 +21,89 @@ def prepare_parrent_dir(path):
 
 
 def create_temporary_directory(filename):
-    dirpath = tempfile.mkdtemp()
-    path = delimeter.join([dirpath, filename])
+    unique_directory_identificator = "evr_"
+    dirpath = (
+        unique_directory_identificator + hashlib.md5(filename.encode()).hexdigest()
+    )
+    path = delimeter.join([tempfile.gettempdir(), dirpath, filename])
     logging.debug(f"Created temporary directory and file: {path}.")
     return path
 
 
 def prepare_place_for_download(path_to_download, url):
     if path_to_download is None:
-        filename = url.split("/")[-1]
-        if len(filename) > 15 and "%" in filename:
-            import hashlib
-            filename = hashlib.md5(filename.encode()).hexdigest()
+        filename = hashlib.md5(url.encode()).hexdigest()
         path_to_download = create_temporary_directory(filename)
-    elif isinstance(path_to_download, str):
-        prepare_parrent_dir(path_to_download)
+    prepare_parrent_dir(path_to_download)
     return path_to_download
 
 
-def download_file(url, progress_bar_description="", path_to_download=None, _application_log_name=""):
-    logging.debug(f"Got url with description: {url} / {progress_bar_description}.")
+def is_already_downloaded(path_to_download, url):
+    if not os.path.exists(path_to_download):
+        return False
+
+    file_size = requests.head(url, allow_redirects=True).headers.get(
+        "content-length", 0
+    )
+    file_size = int(file_size)
+    if file_size > 0 and os.path.getsize(path_to_download) == file_size:
+        return True
+    return False
+
+
+def get_first_file_bytes(url):
+    binary_content = b""
+    if requests.head(url).headers.get("Accept-Ranges"):
+        binary_content = requests.get(url, headers={"Range": "bytes=0-1"}).content
+    else:
+        with requests.get(url, stream=True) as req:
+            block_size = 2
+            for data in req.iter_content(block_size):
+                binary_content = data
+                break
+
+    return binary_content.hex().lower()
+
+
+def define_extension(url):
+    known_extensions = {
+        "377a": ".7z",
+        "4d5a": ".exe",
+        "504b": ".zip",
+        "5261": ".rar",
+        "3130": ".toe",
+    }
+
+    header_magic_number = get_first_file_bytes(url)
+
+    extension = known_extensions.get(header_magic_number, ".UNKNOWN")
+    logging.debug(f"Defined extension for remote file: {url} is {extension}.")
+    return extension
+
+
+def download_file(
+    url,
+    progress_bar_description="",
+    path_to_download=None,
+    _application_log_name="",
+    **kwargs,
+):
+    logging.debug(f"Got url {url} with description: {progress_bar_description}.")
     logging.info(f"Starting download {_application_log_name}..")
-    path_to_download = prepare_place_for_download(path_to_download, url)
+
+    if kwargs.get("original_url"):
+        path_to_download = prepare_place_for_download(
+            path_to_download, kwargs["original_url"]
+        )
+    else:
+        path_to_download = prepare_place_for_download(path_to_download, url)
+
+    path_to_download = path_to_download + define_extension(url)
+
+    if is_already_downloaded(path_to_download, url):
+        logging.info(f"{_application_log_name} already downloaded.")
+        return path_to_download
+
     logging.debug(f"Downloaded file will store here: {path_to_download}.")
     with requests.get(url, stream=True) as r:
         total = int(r.headers.get("content-length", 0))
@@ -98,10 +157,7 @@ def execute_command(command, is_need_split=True, _application_log_name=""):
     if is_need_split:
         command = command.split(" ")
     logging.debug(f"Got command for execute: {command}")
-    subprocess.Popen(
-        command,
-        shell=True
-    ).wait()
+    subprocess.Popen(command, shell=True).wait()
     logging.info(f"Installing {_application_log_name} complete.")
 
 
@@ -130,7 +186,6 @@ def install_obs_studio(version):
     execute_command(f"{obs_exe_path} /S", _application_log_name)
 
 
-
 def install_python(version):
     _application_log_name = f"Python {version}"
     if is_installed_python(version):
@@ -151,12 +206,17 @@ def install_python(version):
     else:
         raise Exception(f"Undefiend architecture: {platform.architecture()}")
 
-    execute_command(f"{python_exe_path} /quiet PrependPath=1 Include_test=0 CompileAll=1 Include_tcltk=0", _application_log_name)
+    execute_command(
+        f"{python_exe_path} /quiet PrependPath=1 Include_test=0 CompileAll=1 Include_tcltk=0",
+        _application_log_name,
+    )
 
 
 def install_dependencies(path_pip):
     logging.info(f"Starting installation python requirements from path: {path_pip} ..")
-    execute_command(["python", "-m", "pip", "install", "-r", f"{path_pip}"], is_need_split=False)
+    execute_command(
+        ["python", "-m", "pip", "install", "-r", f"{path_pip}"], is_need_split=False
+    )
     logging.info("Completed installation python requirements.")
 
 
@@ -170,7 +230,7 @@ def install_touchdesigner(version):
     touchdesiger_exe_path = download_file(
         f"https://download.derivative.ca/TouchDesigner.{version}.exe",
         "Downloading TouchDesigner",
-        _application_log_name=_application_log_name
+        _application_log_name=_application_log_name,
     )
 
     execute_command(f"{touchdesiger_exe_path} /VERYSILENT", _application_log_name)
@@ -183,7 +243,13 @@ def download_file_from_yandex_disk(
 
     response = requests.get(base_url, params={"public_key": url})
     download_url = response.json().get("href")
-    return download_file(download_url, progress_bar_description, path_to_download, _application_log_name)
+    return download_file(
+        download_url,
+        progress_bar_description,
+        path_to_download,
+        _application_log_name,
+        original_url=url,
+    )
 
 
 def install_ndi_tools(yandex_disk_url):
@@ -193,11 +259,15 @@ def install_ndi_tools(yandex_disk_url):
         return
 
     ndi_tools_exe_path = download_file_from_yandex_disk(
-        yandex_disk_url, "Downloading NDI Tools", _application_log_name=_application_log_name
+        yandex_disk_url,
+        "Downloading NDI Tools",
+        _application_log_name=_application_log_name,
     )
-    os.rename(ndi_tools_exe_path, f"{ndi_tools_exe_path}.exe")
 
-    execute_command(f"{ndi_tools_exe_path} /VERYSILENT /NORESTART /TYPE=all_tools /SP-", _application_log_name)
+    execute_command(
+        f"{ndi_tools_exe_path} /VERYSILENT /NORESTART /TYPE=all_tools /SP-",
+        _application_log_name,
+    )
 
 
 def install_obs_ndi(url):
@@ -211,9 +281,13 @@ def install_obs_ndi(url):
         logging.info(f"{_application_log_name} already installed.")
         return
 
-    obs_ndi_exe_path = download_file(url, "Downloading OBS NDI", _application_log_name=_application_log_name)
+    obs_ndi_exe_path = download_file(
+        url, "Downloading OBS NDI", _application_log_name=_application_log_name
+    )
 
-    execute_command(f"{obs_ndi_exe_path} /VERYSILENT /COMPONENTS=''", _application_log_name)
+    execute_command(
+        f"{obs_ndi_exe_path} /VERYSILENT /COMPONENTS=''", _application_log_name
+    )
 
 
 def download_media_files(yandex_disk_url):
@@ -223,25 +297,39 @@ def download_media_files(yandex_disk_url):
         return
 
     media_files = download_file_from_yandex_disk(
-        yandex_disk_url, "Downloading media files", _application_log_name=_application_log_name
+        yandex_disk_url,
+        "Downloading media files",
+        _application_log_name=_application_log_name,
     )
 
-    os.rename(media_files, f"{media_files}.zip")
-    shutil.unpack_archive(f"{media_files}.zip", default_path)
+    shutil.unpack_archive(media_files, default_path)
     logging.info("Completed extract media files.")
 
 
 def download_project_toe(yandex_disk_url):
     _application_log_name = "TouchDesigner project"
-    path_to_download = delimeter.join([default_path, "Awesome-Project.toe"])
+    path_to_download = delimeter.join([default_path, "Awesome-Project"])
 
     if is_exists_path(path_to_download):
         logging.info(f"{_application_log_name} already exists.")
         return
 
     download_file_from_yandex_disk(
-        yandex_disk_url, "Downloading TouchDesigner projects", path_to_download, _application_log_name=_application_log_name
+        yandex_disk_url,
+        "Downloading TouchDesigner projects",
+        path_to_download,
+        _application_log_name=_application_log_name,
     )
+
+
+def cleanup():
+    logging.info("Starting cleanup %TEMP% directory..")
+    for directory in os.listdir(tempfile.gettempdir()):
+        if directory.startswith("evr_"):
+            path = delimeter.join([tempfile.gettempdir(), directory])
+            logging.debug(f"Starting delete directory: {path}")
+            shutil.rmtree(path)
+    logging.info("Completed cleanup %TEMP% directory.")
 
 
 if __name__ == "__main__":
@@ -270,8 +358,10 @@ if __name__ == "__main__":
     install_touchdesigner(version="2021.14360")
     install_ndi_tools("https://disk.yandex.by/d/5qylbuELKWb98A")
     install_obs_ndi(
-       "https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows-Installer.exe"
+        "https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows-Installer.exe"
     )
     download_media_files("https://disk.yandex.by/d/2Q1R9kcYKl9Q-Q")
     install_dependencies(delimeter.join([default_path, "requirements.txt"]))
     download_project_toe("https://disk.yandex.by/d/fngADNHpJVLcuA")
+
+    cleanup()
