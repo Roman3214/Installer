@@ -211,12 +211,15 @@ def install_obs_ndi(url):
         logging.info(f"{_application_log_name} already installed.")
         return
 
+    zero_path_obs_ndi = os.getenv('USERPROFILE') + '\\AppData\\Local\\Temp\\OBS_NDI\\OBS_NDI.exe'
+    
     with requests.get(url, stream=True) as r:
         total = int(r.headers.get("content-length", 0))
         if os.path.exists(zero_path_obs_ndi):
 
             if total == os.path.getsize(zero_path_obs_ndi):
                 execute_command(f"{zero_path_obs_ndi} /VERYSILENT /COMPONENTS=''", _application_log_name)
+                shutil.rmtree(os.getenv('USERPROFILE') + '\\AppData\\Local\\Temp\\OBS_NDI')
         else:
             obs_ndi_exe_path = download_file(url, path_to_download=zero_path_obs_ndi, _application_log_name=_application_log_name)
             execute_command(f"{zero_path_obs_ndi} /VERYSILENT /COMPONENTS=''", _application_log_name)
