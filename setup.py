@@ -23,7 +23,7 @@ def prepare_parrent_dir(path):
 
 
 def create_temporary_directory(filename):
-    dirpath = tempfile.mkdtemp()
+    dirpath = tempfile.mkdtemp("zxcqwer")
     path = delimeter.join([dirpath, filename])
     logging.debug(f"Created temporary directory and file: {path}.")
     return path
@@ -259,7 +259,7 @@ def delet_temp():
     os.chdir(file_name)
 
     for filename in os.listdir():
-        if filename.startswith("tmp"):
+        if filename.endswith("zxcqwer"):
             shutil.rmtree(filename)
 
 
