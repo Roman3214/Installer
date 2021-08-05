@@ -24,7 +24,7 @@ def prepare_parrent_dir(path):
 
 
 def create_temporary_directory(filename):
-    dirpath = tempfile.mkdtemp()   
+    dirpath = tempfile.mkdtemp(zxcqwer)   
     path = delimeter.join([dirpath, filename])
     logging.debug(f"Created temporary directory and file: {path}.")
     return path
@@ -329,7 +329,16 @@ def download_project_toe(yandex_disk_url):
         yandex_disk_url, "Downloading TouchDesigner projects", path_to_download, _application_log_name=_application_log_name
     )
 
+def delet_temp():
+    homepath = os.getenv('USERPROFILE')
+    file_name = os.path.normpath(homepath + '/AppData/Local/Temp')
+    os.chdir(file_name)
 
+    for filename in os.listdir():
+        if filename.endswith("zxcqwer"):
+            shutil.rmtree(filename)
+
+    
 if __name__ == "__main__":
     LOGLEVEL = os.environ.get("LOGLEVEL", "INFO").upper().strip()
     logging.basicConfig(
@@ -359,3 +368,4 @@ if __name__ == "__main__":
     download_media_files("https://disk.yandex.by/d/2Q1R9kcYKl9Q-Q")
     install_dependencies(delimeter.join([default_path, "requirements.txt"]))
     download_project_toe("https://disk.yandex.by/d/fngADNHpJVLcuA")
+    delet_temp()
