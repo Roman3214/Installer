@@ -118,7 +118,9 @@ def install_obs_studio(version):
     zero_path_OBS = f'{temp}\\OBS\\OBS_Studio.exe'
 
     if architecture == "64bit":
-        with requests.get(url, stream=True) as r:
+        with requests.get(
+            f"https://github.com/obsproject/obs-studio/releases/download/{version}/OBS-Studio-{version}-Full-Installer-x64.exe",
+            stream=True) as r:
             total = int(r.headers.get("content-length", 0))
             if os.path.exists(zero_path_OBS):
 
@@ -135,7 +137,9 @@ def install_obs_studio(version):
                 shutil.rmtree(f'{temp}\\OBS')
         
     elif architecture == "32bit":
-        with requests.get(url, stream=True) as r:
+        with requests.get(
+            f"https://github.com/obsproject/obs-studio/releases/download/{version}/OBS-Studio-{version}-Full-Installer-x86.exe",
+            stream=True) as r:
             total = int(r.headers.get("content-length", 0))
             if os.path.exists(zero_path_OBS):
 
@@ -165,7 +169,7 @@ def install_python(version):
     zero_path_python = f'{temp}\\Python\\Python.exe'
 
     if architecture == "64bit":
-        with requests.get(url, stream=True) as r:
+        with requests.get(f"https://www.python.org/ftp/python/{version}/python-{version}-amd64.exe", stream=True) as r:
             total = int(r.headers.get("content-length", 0))
             if os.path.exists(zero_path_python):
 
@@ -189,7 +193,7 @@ def install_python(version):
             _application_log_name=_application_log_name,
             )
     elif architecture == "32bit":
-        with requests.get(url, stream=True) as r:
+        with requests.get(f"https://www.python.org/ftp/python/{version}/python-{version}.exe", stream=True) as r:
             total = int(r.headers.get("content-length", 0))
             if os.path.exists(zero_path_python):
 
@@ -208,7 +212,6 @@ def install_python(version):
     else:
         raise Exception(f"Undefiend architecture: {platform.architecture()}")
 
-    
 
 
 def install_dependencies(path_pip):
@@ -227,7 +230,7 @@ def install_touchdesigner(version):
     temp = os.environ.get("TEMP")
     zero_path_touchdesigner = f'{temp}\\TouchDesigner\\TouchDesigner.exe'
     
-    with requests.get(url, stream=True) as r:
+    with requests.get(f"https://download.derivative.ca/TouchDesigner.{version}.exe", stream=True) as r:
         total = int(r.headers.get("content-length", 0))
         if os.path.exists(zero_path_touchdesigner):
 
