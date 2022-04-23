@@ -366,9 +366,9 @@ if __name__ == "__main__":
     install_obs_studio(version="27.0.1")
     install_python(version="3.9.6")
     install_touchdesigner(version="2021.14360")
-    install_ndi_tools("https://disk.yandex.by/d/5qylbuELKWb98A")
+    install_ndi_tools("https://disk.yandex.by/...")#URL
     install_obs_ndi("https://github.com/Palakis/obs-ndi/releases/download/4.9.1/obs-ndi-4.9.0-Windows-Installer.exe")
-    download_media_files("https://disk.yandex.by/d/2Q1R9kcYKl9Q-Q")
+    download_media_files("https://disk.yandex.by/...")# URL
     install_dependencies(delimeter.join([default_path, "requirements.txt"]))
-    download_project_toe("https://disk.yandex.by/d/fngADNHpJVLcuA")
+    download_project_toe("https://disk.yandex.by/...")# url
     delet_temp()
